@@ -4,10 +4,11 @@ const bgImg = new Image();
 bgImg.src = './images/road.png';
 const obstacles = [];
 
-
+// GAME FONCTIONNEMENT
 const myGameArea = {
   start: function () {
     this.isGameOn = true;
+    this.score = 0;
     this.frames = 0;
     this.width = canvas.width;
     this.height = canvas.height;
@@ -22,6 +23,7 @@ const myGameArea = {
   }
 };
 
+// BACKGROUND SETUP AND REFRESH
 const background = {
   img: bgImg,
   y: 0,
@@ -29,32 +31,25 @@ const background = {
 
   move: function() {
     this.y += this.speed;
-    this.y %= this.img.height;
+    this.y %= canvas.height;
   }, 
 
   draw: function() {
-    ctx.drawImage(this.img, 0, this.y);
-    ctx.drawImage(this.img, 0, this.y + this.img.height);
-    ctx.drawImage(this.img, 0, this.y - this.img.height );
+    ctx.drawImage(this.img, 0, this.y, canvas.width, canvas.height);
+    ctx.drawImage(this.img, 0, this.y - canvas.height, canvas.width, canvas.height);
   }
 
 }
 
+// CLASSES COMPONENTS
 class gameComponent {
-  constructor(x, y, w, h, color, img) {
+  constructor(x, y, w, h) {
     this.x = x;
     this.y = y;
     this.h = h; 
     this.w = w;
     this.speedX = 0;
     this.speedY = 0;
-    this.color = color;
-
-    if (img) {
-      const componentImg = new Image();
-      componentImg.src = img
-      this.img = componentImg;
-    }
   }
 
   update() {
@@ -67,11 +62,6 @@ class gameComponent {
       ctx.fillRect(this.x, this.y, this.w, this.h)
     }
     
-  }
-
-  move() {
-    this.x += this.speedX;
-    this.y += this.speedY;
   }
 
   top() {
@@ -89,6 +79,20 @@ class gameComponent {
   right() {
     return this.x + this.w;
   }
+}
+
+class Car extends gameComponent {
+  constructor(x, y, w, h, img) {
+    super(x, y, w, h);
+    const componentImg = new Image();
+    componentImg.src = img
+    this.img = componentImg;
+  }
+
+  move() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+  }
 
   checkImpact(obstacle) {
 
@@ -102,11 +106,19 @@ class gameComponent {
   }
 }
 
-const player = new gameComponent(100, canvas.height - 200, 80, 150, 'transparent', './images/car.png');
+class Obstacle extends gameComponent {
+  constructor(x, y, w, h, color) {
+    super(x, y, w, h);
+    this.color = color;
+  }
+}
 
+const player = new Car(canvas.width/2 - 50, canvas.height - 100, 100, 201, './images/car.png');
+
+// LET'S MAKE IT WORK
 function updateGame() {
   myGameArea.clear();
-  updateCanvas();
+  updateBackground();
   player.move();
   player.update();
   updateObstacles();
@@ -114,12 +126,13 @@ function updateGame() {
   updateScore()
 }
 
-function updateCanvas() {
+function updateBackground() {
   background.move();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   background.draw();
 }
 
+// GENERATE OBSTACLES
 const updateObstacles = function() {
 
   for (i = 0; i < obstacles.length; i++) {
@@ -129,12 +142,12 @@ const updateObstacles = function() {
   
   myGameArea.frames++;
   
-  // generate new obstacle
-  if ( myGameArea.frames % 200 === 0 ) {
+  if ( myGameArea.frames % 280 === 0 ) {
     const height = 20;
-    let width = Math.floor(Math.random() * (bgImg.width - 160 - 120) + 120);
-    const x = Math.floor(Math.random() * bgImg.width - width);
-    obstacles.push(new gameComponent(x, 0, width, height, 'darkred', false));
+    let width = Math.floor(Math.random() * (canvas.width - 200 - 120) + 120);
+    const x = Math.floor(Math.random() * (canvas.width));
+    if (x > canvas.width - 100) { x -= canvas.width; }
+    obstacles.push(new Obstacle(x, 0, width, height, 'darkred'));
   }
 
 }
@@ -143,16 +156,18 @@ function checkGameOver() {
   let crashed = obstacles.some((obstacle) => player.checkImpact(obstacle) );
   console.log(crashed)
   if (crashed) {
+    alert(`BOOOOOMM!\nYour score is ${myGameArea.score}`)
+    myGameArea.isGameOn = false;
     myGameArea.stop();
   }
 }
 
 function updateScore() {
   
-  const score = Math.floor(myGameArea.frames / 5);
+  myGameArea.score = Math.floor(myGameArea.frames / 5);
   ctx.fillStyle = 'black';
   ctx.font = '30px Arial';
-  ctx.fillText(score, canvas.width - 100,50);
+  ctx.fillText(myGameArea.score, canvas.width - 100,50);
 
 }
 
@@ -166,16 +181,6 @@ window.onload = () => {
 
   document.addEventListener('keydown', (e) => {
   switch(e.keyCode) {
-    // case 65:
-    //   console.log(`Si player est dans une des zones autour de l'obstacle :
-    //   Player top ${player.top()} > obs bottom ${obstacles[0].bottom()} --> ${player.top() > obstacles[0].bottom()}
-    //   Payer bottom ${player.bottom()} > obs top ${obstacles[0].top()} --> ${player.bottom() > obstacles[0].top()}
-    //   Player left ${player.left()} > obs right ${obstacles[0].right()} --> ${player.left() > obstacles[0].right()}
-    //   Player right ${player.right()} < à obs left ${obstacles[0].left()} --> ${player.right() < obstacles[0].left()}
-    //   `);
-    //   // console.log('x', obstacles[0].x, 'y', obstacles[0].y, 'width', obstacles[0].w, 'height', obstacles[0].h)
-    //   myGameArea.stop()
-    //   break
     case 32:
       startGame()
       break;
@@ -201,7 +206,7 @@ window.onload = () => {
       player.speedX -= 1;
       break;
     case 39:
-      if (player.right() >= bgImg.width) {
+      if (player.right() >= canvas.width) {
         player.speedX = 0;
         break;
       }
